@@ -68,7 +68,7 @@ const SB='https://mstfaadlhwzrhxmeeqjv.supabase.co/rest/v1/',KEY='sb_publishable
 const api=(p,o={})=>fetch(SB+p,{...o,headers:{apikey:KEY,'Content-Type':'application/json',Prefer:'return=representation',...o.headers}}).then(async r=>{if(!r.ok)throw new Error(await r.text());return r.status==204?null:r.json()});
 const toU=r=>({id:r.id,name:r.name,pin:r.pin,...r.settings,log:r.log,feel:r.feel});
 const toR=u=>({id:u.id,group_id:S.g.id,name:u.name,pin:u.pin||'',settings:{packs:u.packs,size:u.size,base:u.base,wake:u.wake,sleep:u.sleep,start:u.start,end:u.end,th:u.th},log:u.log,feel:u.feel});
-const push=u=>api('kur_users?on_conflict=id',{method:'POST',headers:{Prefer:'return=minimal,resolution=merge-duplicates'},body:JSON.stringify(toR(u))}).catch(e=>{J='';alert('Не сохранилось на сервере: '+(/максимум/.test(e.message)?'в группе уже 6 человек':'нет связи, повторится при следующем действии'))});
+const push=u=>api('kur_users?on_conflict=id',{method:'POST',headers:{Prefer:'return=minimal,resolution=merge-duplicates'},body:JSON.stringify(toR(u))}).catch(e=>{J='';alert('Не сохранилось на сервере: '+(/максимум/.test(e.message)?'в группе уже 6 человек':String(e.message).slice(0,300)))});
 async function pull(){if(!S.g)return;try{const r=await api('kur_users?group_id=eq.'+S.g.id+'&order=created_at'),cu=U(),dirty=cu&&JSON.stringify(toR(cu))!=J;
 S.users=r.map(toU);if(dirty){const i=S.users.findIndex(x=>x.id==cu.id);if(i>=0)S.users[i]=cu}else if(U())J=JSON.stringify(toR(U()));
 L.kur=JSON.stringify(S)}catch(e){}}
