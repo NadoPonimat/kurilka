@@ -42,6 +42,9 @@ label{display:block;font-size:13px;color:var(--mu);margin-bottom:8px;flex:1}
 .th{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .th button{padding:8px;font-size:13px;border-width:2px}
 .th i{display:flex;height:18px;border-radius:4px;overflow:hidden;margin-bottom:5px}.th i b{flex:1}
+.pl{display:flex;gap:8px;align-items:center;padding:5px 4px;border-top:1px solid var(--ln);font-size:14px}
+.pl span:first-child{width:62px}.pl b{width:28px;text-align:right;color:var(--ac)}.pl span.mu{flex:1}.pl i{font-style:normal;font-size:13px;width:46px;text-align:right}
+.pl.now{background:color-mix(in srgb,var(--ac) 18%,var(--card));border-radius:6px}
 .user{width:100%;text-align:left;margin-bottom:8px;font-size:18px;padding:16px}
 </style></head><body><div id="app"></div>
 <script>
@@ -77,6 +80,16 @@ async function gnew(){const n=$('#g_n').value.trim();if(!n)return alert('Вве�
 try{const r=await api('kur_groups',{method:'POST',body:JSON.stringify({name:n,code})});S.g={id:r[0].id,code,name:n};S.users=[];S.cur=null;save();login(1)}catch(e){alert('Ошибка: '+e.message)}}
 async function gjoin(c){c=(c||$('#g_c').value).trim().toUpperCase();try{const r=await api('kur_groups?code=eq.'+encodeURIComponent(c));if(!r.length){alert('Группа не найдена');return R()}S.g={id:r[0].id,code:c,name:r[0].name};S.cur=null;save();await pull();login()}catch(e){alert('Ошибка: '+e.message);R()}}
 function gleave(){if(!confirm('Выйти из группы на этом устройстве? Данные в группе сохранятся.'))return;S.g=null;S.users=[];S.cur=null;save();R()}
+// план
+const cs=()=>`<div class="seg">${[['m','Месяц'],['p','План']].map(([k,n])=>`<button class="${(S.cv||'m')==k?'on':''}" onclick="S.cv='${k}';R()">${n}</button>`).join('')}</div>`;
+function plan(u){const td=ds(new Date()),tot=Math.max(1,days(u.start,u.end));let w=tm(u.sleep)-tm(u.wake);if(w<=0)w+=1440;
+const em=n=>Array.from(ST.find(x=>1-n/u.base<=x[0])[1])[0],iv=n=>n?'каждые ~'+Math.round(w/n)+' мин':'не курим',fmt=d=>pd(d).toLocaleDateString('ru',{day:'numeric',month:'short'});
+let half=null,ten=null,fz=null;for(let i=0;i<=tot;i++){const d=add(u.start,i),n=lim(u,d);if(half==null&&n<=u.base/2)half=d;if(ten==null&&n<=10)ten=d;if(fz==null&&n==0)fz=d}
+let wk='';for(let a=0;a<=tot;a+=7){const b=Math.min(a+6,tot),d1=add(u.start,a),d2=add(u.start,b),n1=lim(u,d1),n2=lim(u,d2);
+wk+=`<div class="card"><h3>Неделя ${a/7+1} · ${fmt(d1)} – ${fmt(d2)}</h3><p>${em(n2)} Лимит: ${n1}${n2!=n1?' → '+n2:''} в сутки · ${iv(n1)}</p>`;
+for(let i=a;i<=b;i++){const d=add(u.start,i),n=lim(u,d),s=cnt(u,d);wk+=`<div class="pl${d==td?' now':''}"><span>${pd(d).toLocaleDateString('ru',{weekday:'short',day:'numeric'})}</span><b>${n}</b><span class="mu">${iv(n)}</span><i>${d<=td?(s<=n?'✅':'❌')+' '+s:''}</i></div>`}wk+='</div>'}
+return`<div class="card"><h3>Твой план</h3><p>Было <b>${u.base}</b> сигарет в сутки (${u.packs} пач. по ${u.size}). Цель — <b>0</b> к ${fmt(u.end)}, это ${tot} дн.</p><p>Лимит снижается примерно на <b>${(u.base/tot).toFixed(1)}</b> сиг. в день. Бодрствуешь ${Math.floor(w/60)} ч ${w%60} мин (${u.wake}–${u.sleep}), сигареты распределены равномерно.</p>
+<p class="mu">Вехи: ${half?'половина пути — '+fmt(half)+' (лимит '+lim(u,half)+'); ':''}${ten?'лимит ≤10 — '+fmt(ten)+'; ':''}${fz?'первый день без сигарет — <b>'+fmt(fz)+'</b>.':''}</p><p class="mu">Если ломка слишком сильная — продли срок в «Ещё», план пересчитается.</p></div>`+wk}
 // логика
 const lim=(u,d)=>{if(d<u.start)return u.base;const t=Math.max(1,days(u.start,u.end)),i=days(u.start,d);return i>=t?0:Math.round(u.base*(1-i/t))};
 const cnt=(u,d)=>u.log.filter(t=>ds(new Date(t))==d).length;
@@ -101,7 +114,7 @@ let c=WD.map(w=>`<div class="h">${w}</div>`).join('')+'<i></i>'.repeat(f);
 for(let k=1;k<=dim;k++){const d=m+'-'+pad(k),n=lim(u,d),s=cnt(u,d),past=d<=td&&d>=u.start;
 c+=`<div class="day ${past?(s<=n?'ok':'bad'):''} ${d==S.sel?'sel':''}" onclick="S.sel='${d}';R()"><b>${k}</b><small>${past?s+'/'+n:(d>=u.start&&d<=u.end?'—/'+n:'')}</small></div>`}
 const sd=S.sel||td;
-return`<div class="card"><div class="nav2"><button onclick="cm(-1)">‹</button><b>${new Date(Y,M-1,1).toLocaleDateString('ru',{month:'long',year:'numeric'})}</b><button onclick="cm(1)">›</button></div><div class="cal">${c}</div><p class="mu">выкурено / лимит. Зелёный — в норме, красный — превышен</p></div>
+if(S.cv=='p')return cs()+plan(u);return cs()+`<div class="card"><div class="nav2"><button onclick="cm(-1)">‹</button><b>${new Date(Y,M-1,1).toLocaleDateString('ru',{month:'long',year:'numeric'})}</b><button onclick="cm(1)">›</button></div><div class="cal">${c}</div><p class="mu">выкурено / лимит. Зелёный — в норме, красный — превышен</p></div>
 <div class="card"><h3>${sd}</h3><p>Лимит: ${lim(u,sd)} · выкурено: ${cnt(u,sd)}</p><p class="mu">${u.log.filter(t=>ds(new Date(t))==sd).map(t=>hm(new Date(t).getHours()*60+new Date(t).getMinutes())).join(', ')||'—'}</p>
 ${u.feel.filter(f=>ds(new Date(f.t))==sd).map(f=>`<p>${EM[f.lv][0]} ${esc(f.note||EM[f.lv][1])}</p>`).join('')}</div>`},
 heat:u=>{const md=S.hm||'d',d=S.sel||ds(new Date());let rows;
