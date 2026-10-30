@@ -15,7 +15,8 @@ nav small{font-size:10px}nav .on{color:var(--ac)}
 h3{margin:0 0 8px;font-size:15px}p{margin:6px 0}
 button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:10px 14px;cursor:pointer}
 .big{width:100%;background:var(--ac);color:var(--bg);border:0;font-weight:700;margin-top:8px;padding:14px}
-input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit;margin-top:4px}
+a{color:var(--ac);word-break:break-all}
+input,textarea{width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit;margin-top:4px}
 input[type=color]{padding:2px;height:40px}
 label{display:block;font-size:13px;color:var(--mu);margin-bottom:8px;flex:1}
 .row{display:flex;gap:8px}.mu{color:var(--mu);font-size:13px}
@@ -70,7 +71,7 @@ function theme(u){const t=allTh().find(x=>u&&x.n==u.th)||TH[0],r=document.docume
 const SB='https://mstfaadlhwzrhxmeeqjv.supabase.co/rest/v1/',KEY='sb_publishable_XT8x1u3HSjM0W043uanGEQ_GeTQfLnC';
 const api=(p,o={})=>fetch(SB+p,{...o,headers:{apikey:KEY,'Content-Type':'application/json',Prefer:'return=representation',...o.headers}}).then(async r=>{const t=await r.text();if(!r.ok)throw new Error(t||r.status);return t?JSON.parse(t):null});
 const toU=r=>({id:r.id,name:r.name,pin:r.pin,...r.settings,log:r.log,feel:r.feel});
-const toR=u=>({id:u.id,group_id:S.g.id,name:u.name,pin:u.pin||'',settings:{packs:u.packs,size:u.size,base:u.base,wake:u.wake,sleep:u.sleep,start:u.start,end:u.end,th:u.th},log:u.log,feel:u.feel});
+const toR=u=>({id:u.id,group_id:S.g.id,name:u.name,pin:u.pin||'',settings:{packs:u.packs,size:u.size,base:u.base,wake:u.wake,sleep:u.sleep,start:u.start,end:u.end,th:u.th,wk:u.wk,dd:u.dd,why:u.why},log:u.log,feel:u.feel});
 const push=u=>api('kur_users?on_conflict=id',{method:'POST',headers:{Prefer:'return=minimal,resolution=merge-duplicates'},body:JSON.stringify(toR(u))}).catch(e=>{J='';alert('Не сохранилось на сервере: '+(/максимум/.test(e.message)?'в группе уже 6 человек':String(e.message).slice(0,300)))});
 async function pull(){if(!S.g)return;try{const r=await api('kur_users?group_id=eq.'+S.g.id+'&order=created_at'),cu=U(),dirty=cu&&JSON.stringify(toR(cu))!=J;
 S.users=r.map(toU);if(dirty){const i=S.users.findIndex(x=>x.id==cu.id);if(i>=0)S.users[i]=cu}else if(U())J=JSON.stringify(toR(U()));
@@ -80,20 +81,38 @@ async function gnew(){const n=$('#g_n').value.trim();if(!n)return alert('Вве�
 try{const r=await api('kur_groups',{method:'POST',body:JSON.stringify({name:n,code})});S.g={id:r[0].id,code,name:n};S.users=[];S.cur=null;save();login(1)}catch(e){alert('Ошибка: '+e.message)}}
 async function gjoin(c){c=(c||$('#g_c').value).trim().toUpperCase();try{const r=await api('kur_groups?code=eq.'+encodeURIComponent(c));if(!r.length){alert('Группа не найдена');return R()}S.g={id:r[0].id,code:c,name:r[0].name};S.cur=null;save();await pull();login()}catch(e){alert('Ошибка: '+e.message);R()}}
 function gleave(){if(!confirm('Выйти из группы на этом устройстве? Данные в группе сохранятся.'))return;S.g=null;S.users=[];S.cur=null;save();R()}
+// мотивация и исследования
+const fs=()=>`<div class="seg">${[['d','Дневник'],['m','Мотивация'],['r','Исследования']].map(([k,n])=>`<button class="${(S.fv||'d')==k?'on':''}" onclick="S.fv='${k}';R()">${n}</button>`).join('')}</div>`;
+const MQ=["Каждая невыкуренная сигарета — шаг к свободе от привычки.","Тяга приходит волной и уходит за несколько минут. Ты сильнее волны.","Ты не «лишаешь себя» — ты возвращаешь себе контроль.","Срыв — не конец плана. Отметь, вернись к графику и иди дальше.","Сегодняшний лимит — маленькая цель. Выполни только её.","Через год после отказа добавочный риск болезни сердца вдвое ниже, чем у курящего."];
+const TL=[[20,"20 минут","Пульс снижается"],[720,"12 часов","Уровень угарного газа в крови приходит в норму"],[20160,"2 недели – 3 месяца","Начинает снижаться риск инфаркта, улучшается функция лёгких"],[43200,"1–9 месяцев","Меньше кашля и одышки"],[525600,"1 год","Добавочный риск ишемической болезни сердца вдвое ниже, чем у курящего"],[2628000,"5 лет","Риск инсульта снижается до уровня некурящего (в течение 5–15 лет после отказа)"],[5256000,"10 лет","Смертность от рака лёгкого примерно вдвое ниже, чем у курящего"],[7884000,"15 лет","Риск ишемической болезни сердца как у некурящего"]];
+function mot(u){const d=ds(new Date()),last=u.log.length?Math.max(...u.log):pd(u.start).getTime(),m=(Date.now()-last)/6e4;let sv=0;for(let k=0;k<=days(u.start,d);k++)sv+=u.base-cnt(u,add(u.start,k));
+const q=MQ[Math.floor(Date.now()/864e5)%MQ.length];
+return`<div class="card"><h3>💪 На сегодня</h3><p>${q}</p><p class="mu">Не выкурено с начала плана: <b>${Math.max(0,sv)}</b> сиг.</p></div>
+<div class="card"><h3>Мои причины бросить</h3><textarea id="why" rows="4" placeholder="Зачем ты бросаешь? Здоровье, деньги, семья…">${esc(u.why||'')}</textarea><button class="big" onclick="saveWhy()">Сохранить</button></div>
+<div class="card"><h3>Что происходит с организмом</h3><p class="mu">С последней сигареты: ${m<60?Math.round(m)+' мин':m<1440?Math.round(m/60)+' ч':Math.round(m/1440)+' дн.'}. Отмечены этапы, которые уже прошли, пока ты не куришь.</p>${TL.map(r=>`<div class="pl${m>=r[0]?' now':''}"><span style="width:100px">${m>=r[0]?'✅ ':''}${r[1]}</span><span class="mu" style="flex:1">${r[2]}</span></div>`).join('')}<p class="mu">Источники: US Surgeon General, 2004; ВОЗ, 2020.</p></div>`}
+function saveWhy(){U().why=$('#why').value;save();R()}
+const AR=[["Mortality in relation to smoking: 50 years' observations on male British doctors","Doll R, Peto R, Boreham J, Sutherland I","BMJ 2004;328:1519","10.1136/bmj.38142.554479.AE","Проспективное исследование 34 439 британских врачей-мужчин, длившееся 50 лет. Курившие сигареты и не бросившие умирали в среднем примерно на 10 лет раньше некурящих. Отказ в 60, 50, 40 или 30 лет давал примерно 3, 6, 9 или почти 10 лет жизни."],
+["21st-century hazards of smoking and benefits of cessation in the United States","Jha P, Ramasundarahettige C, Landsman V, Rostron B, Thun M, Anderson RN, McAfee T, Peto R","N Engl J Med 2013;368:341–350","10.1056/NEJMsa1211128","Национально репрезентативное исследование: опрошены 113 752 женщины и 88 496 мужчин старше 25 лет (1997–2004), история курения и отказа сопоставлена с причинами смерти. Цель — оценить современные риски курения и пользу отказа в разном возрасте."],
+["The hazards of smoking and the benefits of cessation: a critical summation of the epidemiological evidence in high-income countries","Jha P","eLife 2020;9:e49979","10.7554/eLife.49979","Обзор эпидемиологических данных США, Великобритании и Канады. Курение — главная причина преждевременной смерти (до 70 лет) в странах с высоким доходом. Начавшие курить рано и не бросившие теряют около десяти лет жизни, а отказ, особенно до 40 лет, заметно снижает риск смерти."],
+["Gradual versus abrupt smoking cessation: a randomized, controlled noninferiority trial","Lindson-Hawley N, Banting M, West R, Michie S, Shinkins B, Aveyard P","Ann Intern Med 2016;164:585–592","10.7326/M14-2805","Рандомизированное исследование на 697 курильщиках: резкий отказ против снижения за 2 недели (обе группы с консультациями и никотинзаместительной терапией). Через 4 недели не курили 49% в группе резкого отказа и 39,2% в группе постепенного, через 6 месяцев — 22% и 15,5%."],
+["A meta-analysis of the effectiveness of gradual versus abrupt smoking cessation","Tan J, Zhao L, Chen H","Tob Induc Dis 2019;17:09","10.18332/tid/100557","Мета-анализ трёх рандомизированных исследований (1607 участников): стойкое воздержание при постепенном снижении оказалось ниже, чем при резком отказе (относительный риск 0,77)."]];
+const art=()=>`<div class="card"><h3>📚 Научные исследования</h3><p class="mu">Справочная информация, не медицинская консультация. Ссылки ведут на оригинальные публикации.</p></div>
+<div class="card"><h3>Важно про постепенный метод</h3><p>В исследованиях резкий отказ в среднем срабатывал немного лучше постепенного снижения. В работе Lindson-Hawley большая часть разницы возникла из-за того, что меньше участников из группы постепенного снижения доходили до полного отказа в назначенный день (61,4% против 71,0%).</p><p>Поэтому дату цели в плане лучше считать обязательной. Если ломка слишком тяжёлая, обсуди с врачом никотинзаместительную терапию: в этих исследованиях её получали участники обеих групп.</p></div>`+AR.map(a=>`<div class="card"><b>${a[0]}</b><p class="mu">${a[1]}. ${a[2]}</p><p>${a[4]}</p><a href="https://doi.org/${a[3]}" target="_blank" rel="noopener">doi:${a[3]}</a></div>`).join('');
 // план
 const cs=()=>`<div class="seg">${[['m','Месяц'],['p','План']].map(([k,n])=>`<button class="${(S.cv||'m')==k?'on':''}" onclick="S.cv='${k}';R()">${n}</button>`).join('')}</div>`;
 function plan(u){const td=ds(new Date()),tot=Math.max(1,days(u.start,u.end));let w=tm(u.sleep)-tm(u.wake);if(w<=0)w+=1440;
-const em=n=>Array.from(ST.find(x=>1-n/u.base<=x[0])[1])[0],iv=n=>n?'каждые ~'+Math.round(w/n)+' мин':'не курим',fmt=d=>pd(d).toLocaleDateString('ru',{day:'numeric',month:'short'});
+const em=n=>Array.from(ST.find(x=>1-n/u.base<=x[0])[1])[0],wm=d=>{const[a,b]=wsOf(u,d);let x=tm(b)-tm(a);if(x<=0)x+=1440;return x},cu=d=>{const[a,b]=wsOf(u,d);return a!=u.wake||b!=u.sleep?' · '+a+'–'+b:''},iv=(n,d)=>n?'каждые ~'+Math.round(wm(d)/n)+' мин':'не курим',fmt=d=>pd(d).toLocaleDateString('ru',{day:'numeric',month:'short'});
 let half=null,ten=null,fz=null;for(let i=0;i<=tot;i++){const d=add(u.start,i),n=lim(u,d);if(half==null&&n<=u.base/2)half=d;if(ten==null&&n<=10)ten=d;if(fz==null&&n==0)fz=d}
 let wk='';for(let a=0;a<=tot;a+=7){const b=Math.min(a+6,tot),d1=add(u.start,a),d2=add(u.start,b),n1=lim(u,d1),n2=lim(u,d2);
-wk+=`<div class="card"><h3>Неделя ${a/7+1} · ${fmt(d1)} – ${fmt(d2)}</h3><p>${em(n2)} Лимит: ${n1}${n2!=n1?' → '+n2:''} в сутки · ${iv(n1)}</p>`;
-for(let i=a;i<=b;i++){const d=add(u.start,i),n=lim(u,d),s=cnt(u,d);wk+=`<div class="pl${d==td?' now':''}"><span>${pd(d).toLocaleDateString('ru',{weekday:'short',day:'numeric'})}</span><b>${n}</b><span class="mu">${iv(n)}</span><i>${d<=td?(s<=n?'✅':'❌')+' '+s:''}</i></div>`}wk+='</div>'}
+wk+=`<div class="card"><h3>Неделя ${a/7+1} · ${fmt(d1)} – ${fmt(d2)}</h3><p>${em(n2)} Лимит: ${n1}${n2!=n1?' → '+n2:''} в сутки · ${iv(n1,d1)}</p>`;
+for(let i=a;i<=b;i++){const d=add(u.start,i),n=lim(u,d),s=cnt(u,d);wk+=`<div class="pl${d==td?' now':''}"><span>${pd(d).toLocaleDateString('ru',{weekday:'short',day:'numeric'})}</span><b>${n}</b><span class="mu">${iv(n,d)}${cu(d)}</span><i>${d<=td?(s<=n?'✅':'❌')+' '+s:''}</i></div>`}wk+='</div>'}
 return`<div class="card"><h3>Твой план</h3><p>Было <b>${u.base}</b> сигарет в сутки (${u.packs} пач. по ${u.size}). Цель — <b>0</b> к ${fmt(u.end)}, это ${tot} дн.</p><p>Лимит снижается примерно на <b>${(u.base/tot).toFixed(1)}</b> сиг. в день. Бодрствуешь ${Math.floor(w/60)} ч ${w%60} мин (${u.wake}–${u.sleep}), сигареты распределены равномерно.</p>
 <p class="mu">Вехи: ${half?'половина пути — '+fmt(half)+' (лимит '+lim(u,half)+'); ':''}${ten?'лимит ≤10 — '+fmt(ten)+'; ':''}${fz?'первый день без сигарет — <b>'+fmt(fz)+'</b>.':''}</p><p class="mu">Если ломка слишком сильная — продли срок в «Ещё», план пересчитается.</p></div>`+wk}
 // логика
 const lim=(u,d)=>{if(d<u.start)return u.base;const t=Math.max(1,days(u.start,u.end)),i=days(u.start,d);return i>=t?0:Math.round(u.base*(1-i/t))};
 const cnt=(u,d)=>u.log.filter(t=>ds(new Date(t))==d).length;
-const slots=(u,n)=>{let w=tm(u.wake),s=tm(u.sleep);if(s<=w)s+=1440;const v=(s-w)/n;return Array.from({length:n},(_,i)=>w+v*(i+.5))};
+const wsOf=(u,d)=>(u.dd||{})[d]||(u.wk||{})[pd(d).getDay()]||[u.wake,u.sleep];
+const slots=(u,n,d=ds(new Date()))=>{const[a,b]=wsOf(u,d);let w=tm(a),s=tm(b);if(s<=w)s+=1440;const v=(s-w)/n;return Array.from({length:n},(_,i)=>w+v*(i+.5))};
 function info(u){const now=new Date(),d=ds(now),n=lim(u,d),s=cnt(u,d);let at=null;if(s<n)at=new Date(pd(d).getTime()+slots(u,n)[s]*6e4);return{n,s,at,ok:at&&now>=at,now,d}}
 const ST=[[.15,"😌 Лёгкое беспокойство: тянет «по привычке» — после еды, кофе, в паузах. Это нормально."],[.4,"😕 Тяга к ритуалам, раздражительность, хуже концентрация. Пей воду, меняй привычный маршрут."],[.7,"😣 Заметная ломка: тревога, перепады настроения, голод, плохой сон. Волна тяги длится 3–5 минут — переждай."],[.99,"😖 Пик: сильная тяга, раздражение. Двигайся, дыши глубоко, откладывай сигарету на 10 минут."],[2,"🌤 Лимит 0: тяга приходит волнами и слабеет с каждым днём. Ты справляешься!"]];
 const EM=[["😌","спокойно"],["😐","терпимо"],["😣","тянет"],["😖","ломка"],["🤬","срыв"]];
@@ -116,7 +135,7 @@ c+=`<div class="day ${past?(s<=n?'ok':'bad'):''} ${d==S.sel?'sel':''}" onclick="
 const sd=S.sel||td;
 if(S.cv=='p')return cs()+plan(u);return cs()+`<div class="card"><div class="nav2"><button onclick="cm(-1)">‹</button><b>${new Date(Y,M-1,1).toLocaleDateString('ru',{month:'long',year:'numeric'})}</b><button onclick="cm(1)">›</button></div><div class="cal">${c}</div><p class="mu">выкурено / лимит. Зелёный — в норме, красный — превышен</p></div>
 <div class="card"><h3>${sd}</h3><p>Лимит: ${lim(u,sd)} · выкурено: ${cnt(u,sd)}</p><p class="mu">${u.log.filter(t=>ds(new Date(t))==sd).map(t=>hm(new Date(t).getHours()*60+new Date(t).getMinutes())).join(', ')||'—'}</p>
-${u.feel.filter(f=>ds(new Date(f.t))==sd).map(f=>`<p>${EM[f.lv][0]} ${esc(f.note||EM[f.lv][1])}</p>`).join('')}</div>`},
+${u.feel.filter(f=>ds(new Date(f.t))==sd).map(f=>`<p>${EM[f.lv][0]} ${esc(f.note||EM[f.lv][1])}</p>`).join('')}<p class="mu" style="margin-top:10px">Режим этого дня (подъём / сон):</p><div class="row"><input id="d_w" type="time" value="${wsOf(u,sd)[0]}"><input id="d_s" type="time" value="${wsOf(u,sd)[1]}"></div><div class="row"><button class="big" onclick="setDd()">Применить</button>${(u.dd||{})[sd]?'<button style="margin-top:8px" onclick="rstDd()">Сбросить</button>':''}</div></div>`},
 heat:u=>{const md=S.hm||'d',d=S.sel||ds(new Date());let rows;
 const hrs=dd=>{const a=Array(24).fill(0);u.log.forEach(t=>{const x=new Date(t);if(ds(x)==dd)a[x.getHours()]++});return a};
 if(md=='d')rows=[[d.slice(5),hrs(d)]];
@@ -128,7 +147,8 @@ return`<div class="card"><div class="seg">${[['d','День'],['w','Неделя
 <div class="nav2"><button onclick="hs(-1)">‹</button><b>${md=='m'?d.slice(0,7):d}</b><button onclick="hs(1)">›</button></div>${hd}
 ${rows.map(r=>`<div class="hr"><span>${r[0]}</span>${r[1].map(v=>`<div class="hc" style="background:${v?`color-mix(in srgb,var(--ac) ${15+v/mx*85}%,var(--card))`:'var(--card)'}">${v||''}</div>`).join('')}</div>`).join('')}
 <p class="mu">Часы по горизонтали. ${md=='m'?'Месяц: сумма по дням недели.':'Чем ярче — тем больше сигарет в этот час.'}</p></div>`},
-feel:u=>`<div class="card"><h3>Что сейчас ожидается</h3><p>${stage(u)}</p><p class="mu">Если ломка сильнее ожидаемой — продли срок в разделе «Ещё».</p></div>
+feel:u=>fs()+(S.fv=='m'?mot(u):S.fv=='r'?art():V.feel0(u)),
+feel0:u=>`<div class="card"><h3>Что сейчас ожидается</h3><p>${stage(u)}</p><p class="mu">Если ломка сильнее ожидаемой — продли срок в разделе «Ещё».</p></div>
 <div class="card"><h3>Как ты себя чувствуешь?</h3><div class="lv">${EM.map((e,i)=>`<button onclick="pick(${i})">${e[0]}<small>${e[1]}</small></button>`).join('')}</div><input id="fn" placeholder="Заметка (необязательно)"><button class="big" onclick="addF()">Сохранить</button></div>
 <div class="card"><h3>История</h3>${u.feel.slice(-12).reverse().map(f=>{const x=new Date(f.t);return`<p>${EM[f.lv][0]} <span class="mu">${ds(x).slice(5)} ${hm(x.getHours()*60+x.getMinutes())}</span> ${esc(f.note||EM[f.lv][1])}</p>`}).join('')||'<p class="mu">Пока пусто</p>'}</div>`,
 grp:u=>{const td=ds(new Date());return`<div class="card"><h3>👥 ${esc(S.g.name)}</h3><p class="mu">Код группы: <b>${S.g.code}</b></p><button class="big" onclick="inv()">🔗 Пригласить по ссылке</button></div>`+S.users.map(x=>{const n=lim(x,td),s=cnt(x,td),tot=Math.max(1,days(x.start,x.end)),p=Math.min(100,Math.max(0,Math.round(days(x.start,td)/tot*100))),la=x.log.length?new Date(x.log[x.log.length-1]):null;
@@ -143,6 +163,7 @@ const F=(u,nw)=>`<div class="card"><h3>${nw?'Новая курилка':'Пар�
 <label>Имя<input id="f_n" value="${esc(u.name)}"></label><label>PIN (необязательно)<input id="f_p" inputmode="numeric" maxlength="6" value="${esc(u.pin||'')}"></label>
 <div class="row"><label>Пачек в сутки<input id="f_k" type="number" step="0.5" min="0.5" value="${u.packs}"></label><label>Сигарет в пачке<input id="f_z" type="number" min="1" value="${u.size}"></label></div>
 <div class="row"><label>Просыпаюсь<input id="f_w" type="time" value="${u.wake}"></label><label>Засыпаю<input id="f_s" type="time" value="${u.sleep}"></label></div>
+<p class="mu">Особый режим по дням недели (пусто — как обычно):</p>${WD.map((n,i)=>{const k=(i+1)%7,v=(u.wk||{})[k]||['',''];return`<div class="row" style="align-items:center"><span style="width:32px">${n}</span><input id="k_w${k}" type="time" value="${v[0]}"><input id="k_s${k}" type="time" value="${v[1]}"></div>`}).join('')}
 <div class="row"><label>Начало<input id="f_a" type="date" value="${u.start}"></label><label>Бросить к<input id="f_e" type="date" value="${u.end}"></label></div>
 <button class="big" onclick="sv(${nw})">${nw?'Создать':'Сохранить'}</button>${nw&&S.users.length?'<button style="width:100%;margin-top:8px" onclick="login()">Назад</button>':''}</div>`;
 function login(newF,pre){if(!S.g)return gsetup();theme(null);const t=ds(new Date());
@@ -154,11 +175,12 @@ function sv(nw){const g=i=>$('#'+i).value,t=ds(new Date());const o={name:g('f_n'
 if(!o.name||!(o.packs>0)||!(o.size>0)||!o.wake||!o.sleep||!o.start||!o.end)return alert('Заполни все поля');
 if(o.wake==o.sleep)return alert('Время подъёма и сна не должно совпадать');if(o.end<=o.start)return alert('Дата цели должна быть позже начала');
 o.base=Math.round(o.packs*o.size);
+o.wk={};for(let k=0;k<7;k++){const a=$('#k_w'+k).value,b=$('#k_s'+k).value;if(a&&b&&a!=b)o.wk[k]=[a,b]}
 if(nw){if(S.users.length>=6)return alert('Максимум 6');const u={id:crypto.randomUUID(),log:[],feel:[],th:'Ночь',...o};S.users.push(u);S.cur=u.id;S.tab='today'}else Object.assign(U(),o);
 save();R()}
 function tick(){const u=U(),el=$('#cd');if(!u||!el)return;const i=info(u);let h,c='',b;
 if(i.n==0){h='Лимит 0 🎉';b='Сегодня не курим'}
-else if(!i.at){const nn=lim(u,add(i.d,1));h='Лимит на сегодня исчерпан';c='bad';b=nn?'Следующая завтра в '+hm(slots(u,nn)[0]):'Завтра лимит 0'}
+else if(!i.at){const nn=lim(u,add(i.d,1));h='Лимит на сегодня исчерпан';c='bad';b=nn?'Следующая завтра в '+hm(slots(u,nn,add(i.d,1))[0]):'Завтра лимит 0'}
 else if(i.ok){h='Можно курить';c='ok';b='Отметь, когда покуришь'}
 else{const s=Math.ceil((i.at-i.now)/1000);h=pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60);b='до следующей сигареты (в '+hm(i.at.getHours()*60+i.at.getMinutes())+')'}
 el.textContent=h;el.className='cd '+c;$('#sub').textContent=b}
@@ -179,6 +201,8 @@ const url=location.href.split('#')[0]+'#g='+S.g.code,txt='Присоединяй
 if(navigator.share)navigator.share({title:'Курилка',text:txt,url}).catch(()=>{});
 else if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('Ссылка скопирована'),()=>prompt('Скопируй ссылку',url));
 else prompt('Скопируй ссылку',url)}
+function setDd(){const u=U(),d=S.sel||ds(new Date()),a=$('#d_w').value,b=$('#d_s').value;if(!a||!b||a==b)return alert('Укажи время подъёма и сна');u.dd=u.dd||{};u.dd[d]=[a,b];save();R()}
+function rstDd(){const u=U();delete (u.dd||{})[S.sel||ds(new Date())];save();R()}
 function delU(){if(!confirm('Удалить курилку и все данные?'))return;api('kur_users?id=eq.'+S.cur,{method:'DELETE'}).catch(()=>{});S.users=S.users.filter(u=>u.id!=S.cur);S.cur=null;save();R()}
 (async()=>{if(!S.g)S.users=[];
 try{const m=location.hash.match(/^#g=([A-Za-z0-9]+)/);
